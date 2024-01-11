@@ -8,6 +8,7 @@
         public string Ingrediants { get; set; }
         public string Preperation { get; set; }
         public Boolean IsAvailable { get; set; }
+        public int kcal { get; set; } = 0;
 
         public Dish(int id, string name, decimal price, string ingrediants, string preperation, bool isAvailable)
         {
@@ -18,6 +19,7 @@
             Preperation = preperation;
             IsAvailable = isAvailable;
         }
+
 
         public Dish() { }
     }

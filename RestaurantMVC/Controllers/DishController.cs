@@ -1,16 +1,29 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using NuGet.Protocol.Core.Types;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
+using RestaurantMVC.Data;
 using RestaurantMVC.Models;
 
 namespace RestaurantMVC.Controllers
 {
     public class DishController : Controller
     {
-        // GET: DishController
-        public ActionResult Index()
+
+        private readonly RestaurantMVCContext _context;
+
+        public DishController(RestaurantMVCContext context)
         {
-            var dishes = Repos.Repository.Dishes.ToList();
+            _context = context;
+        }
+
+        // GET: DishController
+        public async Task<ActionResult> Index()
+        {
+            var dishes = from d in _context.Dish orderby d.Id select d;
             
             return View(dishes);
         }
@@ -30,11 +43,13 @@ namespace RestaurantMVC.Controllers
         // POST: DishController/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Create([Bind("Id,Name,Price,Ingrediants,Preperation,IsAvaiable")] Dish dish)
+        public async Task<ActionResult> Create([Bind("Id,Name,Price,Ingrediants,Preperation,IsAvaiable")] Dish dish)
         {
             if (ModelState.IsValid)
             {
-                Repos.Repository.AddDish(dish);
+                dish.IsAvailable = true;
+                _context.Add(dish);
+                await _context.SaveChangesAsync();
                 return RedirectToAction(nameof(Index));
             }
             return View(dish);
@@ -49,16 +64,27 @@ namespace RestaurantMVC.Controllers
         // POST: DishController/Edit/5
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Edit(int id, IFormCollection collection)
+        public async Task<ActionResult> Edit(int id, [Bind("Id,Name,Price,Ingrediants,Preperation,IsAvaiable")] Dish dish)
         {
-            try
+            if (id != dish.Id)
             {
+                return NotFound();
+            }
+
+            if(ModelState.IsValid)
+            {
+                try
+                {
+                    _context.Update(dish);
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    throw new Exception("marchew");
+                }
                 return RedirectToAction(nameof(Index));
             }
-            catch
-            {
-                return View();
-            }
+            return View(dish);
         }
 
         // GET: DishController/Delete/5
@@ -69,7 +95,7 @@ namespace RestaurantMVC.Controllers
                 return NotFound();
             }
            
-            var dish = Repos.Repository.Dishes.FirstOrDefault(d => d.Id == id);
+            var dish = _context.Dish.FirstOrDefault(d => d.Id == id);
 
             if (dish == null)
             {
@@ -82,14 +108,15 @@ namespace RestaurantMVC.Controllers
         // POST: DishController/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public ActionResult DeleteConfirmed(int id)
+        public async Task<ActionResult> DeleteConfirmed(int id)
         {
-            var dish = Repos.Repository.Dishes.FirstOrDefault(d => d.Id == id);
+            var dish = await _context.Dish.FindAsync(id);
             if (dish != null)
             {
-                Repos.Repository.RemoveDish(id);
+                _context.Dish.Remove(dish);
             }
 
+            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
     }
